@@ -27,8 +27,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Xml;
 using System.IO;
+using System.Xml;
 
 public class NBFSNetConsole
 {
@@ -42,11 +42,11 @@ public class NBFSNetConsole
 
                 if (argv[0].ToLower().Equals("encode"))
                 {
-                    Console.WriteLine(Convert.ToBase64String(NBFS.EncodeBinaryXML(System.Text.ASCIIEncoding.ASCII.GetString(Convert.FromBase64String(argv[1])))));
+                    Console.WriteLine(Convert.ToBase64String(NBFS.EncodeBinaryXML(System.Text.ASCIIEncoding.ASCII.GetString(Convert.FromBase64String((new StreamReader(argv[1])).ReadToEnd())))));
                 }
                 else
                 {
-                    Console.WriteLine(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(NBFS.DecodeBinaryXML(Convert.FromBase64String(argv[1])))));
+                    Console.WriteLine(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(NBFS.DecodeBinaryXML(Convert.FromBase64String((new StreamReader(argv[1])).ReadToEnd())))));
                 }
             }
             catch (Exception e)
@@ -129,7 +129,6 @@ public class WcfBinaryCodec
             NewLineChars = Environment.NewLine,
             NewLineHandling = explode ? NewLineHandling.Replace : NewLineHandling.None,
             NewLineOnAttributes = explode
-            // QuoteChar = '"' 
         };
         using (var writer = XmlWriter.Create(xmlOutput, settings))
         {
@@ -678,4 +677,3 @@ public static class WcfDictionaryBuilder
         dict.Add("Detail");
     }
 }
-
