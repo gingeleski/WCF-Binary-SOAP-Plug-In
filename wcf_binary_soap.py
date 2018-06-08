@@ -16,8 +16,6 @@ https://labs.neohapsis.com/2013/09/16/burp-extensions-in-python-pentesting-custo
 
 # Java classes being imported using Python syntax (Jython magic)
 from burp import IBurpExtender
-#from burp import ActionListener
-from burp import IHttpListener
 from burp import IExtensionHelpers
 from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
@@ -25,12 +23,13 @@ from burp import IMessageEditorTab
 from datetime import datetime
 
 class CustomDecoderTab(IMessageEditorTab):
+    
     def __init__(self, extender, controller, editable):
         self._extender = extender
         self._editable = editable
         self._controller = controller
         # create an instance of Burp's text editor to display decoded data
-        self._txtInput = extender.mCalbacks.createTextEditor()
+        self._txtInput = extender._callbacks.createTextEditor()
         self._txtInput.setEditable(editable)
         self._currentMessage = ''
         return
@@ -89,24 +88,15 @@ class CustomDecoderTab(IMessageEditorTab):
     def getSelectedData(self):
         return self._txtInput.getSelectedText()
 
-class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory):
-    def __init_(self):
-        pass
+class BurpExtender(IBurpExtender, IMessageEditorTabFactory):
 
     def registerExtenderCallbacks(self, callbacks):
         self._callbacks = callbacks
         self._helpers = callbacks.getHelpers()
         callbacks.setExtensionName('WCF Binary Soap Inspector')
-        callbacks.registerHttpListener(self)
         callbacks.registerMessageEditorTabFactory(self)
         return
  
     # ** Message Editor Tab Factory method
     def createNewInstance(self, controller, editable):
-        tab = CustomDecoderTab(self, controller, editable)
-        return tab
-
-    # ** HTTP Listener method
-    def processHttpMessage(self, toolFlag, messageIsRequest, currentRequest):
-        # TODO do we need this any more
-        return
+        return CustomDecoderTab(self, controller, editable)
