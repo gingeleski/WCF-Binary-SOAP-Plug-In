@@ -21,9 +21,10 @@ from burp import IMessageEditorTabFactory
 from burp import IMessageEditorTab
  
 from datetime import datetime
+from subprocess import PIPE, Popen
 
 class CustomDecoderTab(IMessageEditorTab):
-    
+
     def __init__(self, extender, controller, editable):
         self._extender = extender
         self._editable = editable
@@ -66,13 +67,20 @@ class CustomDecoderTab(IMessageEditorTab):
                 headers = requestInfo.getHeaders()
                 for h in headers:
                     if 'application/soap+msbin' in h:
-                        # TODO do something here then set this content
-                        content = 'PLACEHOLDER'
-                        if content:
-                            self._txtInput.setText(content)
-                            self._currentMessage = content
-                        else:
-                            self._currentMessage = ''
+                        decodedContent = ''
+                        requestBodyOffset = int(requestInfo.getBodyOffset())
+                        requestBody = content[requestBodyOffset:]
+                        requestBody64 = self._extender._helpers.base64Encode(requestBody)
+                        try:
+                            p1 = Popen(['NBFS','DECODE',requestBody64],stdout=PIPE)
+                            print(p1.communicate())
+                        except Exception, e:
+                            print('Call to NBFS failed - is \{repo\}/bin is on your path??')
+                            print(e.__doc__)
+                            print(e.message)
+                        decodedContent = requestBody64
+                        self._txtInput.setText(decodedContent)
+                        self._currentMessage = decodedContent
         except Exception, e:
             print(e.__doc__)
             print(e.message)
