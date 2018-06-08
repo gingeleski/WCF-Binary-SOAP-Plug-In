@@ -16,44 +16,97 @@ https://labs.neohapsis.com/2013/09/16/burp-extensions-in-python-pentesting-custo
 
 # Java classes being imported using Python syntax (Jython magic)
 from burp import IBurpExtender
+#from burp import ActionListener
 from burp import IHttpListener
+from burp import IExtensionHelpers
+from burp import IMessageEditorTabFactory
+from burp import IMessageEditorTab
  
 from datetime import datetime
- 
-class BurpExtender(IBurpExtender, IHttpListener):
- 
+
+class CustomDecoderTab(IMessageEditorTab):
+    def __init__(self, extender, controller, editable):
+        self._extender = extender
+        self._editable = editable
+        self._controller = controller
+        # create an instance of Burp's text editor to display decoded data
+        self._txtInput = extender.mCalbacks.createTextEditor()
+        self._txtInput.setEditable(editable)
+        self._currentMessage = ''
+        return
+
+    def getTabCaption(self):
+        return 'soap+msbin1'
+
+    def getUiComponent(self):
+        return self._txtInput.getComponent()
+
+    def isEnabled(self, content, isRequest):
+        if content:
+            httpService = self._controller.getHttpService()
+            if httpService:
+                if isRequest:
+                    requestInfo = self._extender._helpers.analyzeRequest(httpService, content)
+                    headers = requestInfo.getHeaders()
+                    for h in headers:
+                        if 'application/soap+msbin' in h:
+                            return True
+                    return False
+                else:
+                    # TODO not working for responses yet
+                    return False
+        return False
+
+    def setMessage(self, content, isRequest):
+        try:
+            if not content:
+                self._txtInput.setText('Error how did this happen oh no')
+                self._txtInput.setEditable(False)
+            else:
+                requestInfo = self._extender._helpers.analyzeRequest(self._controller.getHttpService(), content)
+                headers = requestInfo.getHeaders()
+                for h in headers:
+                    if 'application/soap+msbin' in h:
+                        # TODO do something here then set this content
+                        content = 'PLACEHOLDER'
+                        if content:
+                            self._txtInput.setText(content)
+                            self._currentMessage = content
+                        else:
+                            self._currentMessage = ''
+        except Exception, e:
+            print(e.__doc__)
+            print(e.message)
+        return
+
+    def getMessage(self):
+        # Pointless (?) method that Burp calls when you switch out of the tab (?)
+        return self._currentMessage
+
+    def isModified(self):
+        return self._txtInput.isTextModified()
+
+    def getSelectedData(self):
+        return self._txtInput.getSelectedText()
+
+class BurpExtender(IBurpExtender, IHttpListener, IMessageEditorTabFactory):
+    def __init_(self):
+        pass
+
     def registerExtenderCallbacks(self, callbacks):
         self._callbacks = callbacks
         self._helpers = callbacks.getHelpers()
         callbacks.setExtensionName('WCF Binary Soap Inspector')
         callbacks.registerHttpListener(self)
+        callbacks.registerMessageEditorTabFactory(self)
         return
  
+    # ** Message Editor Tab Factory method
+    def createNewInstance(self, controller, editable):
+        tab = CustomDecoderTab(self, controller, editable)
+        return tab
+
+    # ** HTTP Listener method
     def processHttpMessage(self, toolFlag, messageIsRequest, currentRequest):
-        # Only process requests
-        if not messageIsRequest:
-            return
-         
-        requestInfo = self._helpers.analyzeRequest(currentRequest)
-        headers = requestInfo.getHeaders()
-        newHeaders = list(headers)  # Get Python list from Java arraylist
-
-        for h in newHeaders:
-            if 'application/soap+msbin' in h:
-                timestamp = datetime.now()
-                print 'Found WCF Binary Soap @ ' + str(timestamp.isoformat())
-                #bodyBytes = currentRequest.getRequest()[requestInfo.getBodyOffset():]
-                #bodyStr = self._helpers.bytesToString(bodyBytes)
-                print '\n'
-
-        #newMsgBody = bodyStr + timestamp.isoformat()
-        #newMessage = self._helpers.buildHttpMessage(newHeaders,newMsgBody)
-
-        #print "Sending modified message:"
-        #print "----------------------------------------------"
-        #print self._helpers.bytesToString(newMessage)
-        #print "----------------------------------------------\n\n"
-         
-        #currentRequest.setRequest(newMessage)
-        
+        # TODO do we need this any more
         return
